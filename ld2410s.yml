@@ -1,0 +1,131 @@
+substitutions:
+  device_name: "ld2410s"
+  device_name_pretty: Presence sensor
+  uart_tx_pin: GPIO17
+  uart_rx_pin: GPIO16
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: arduino
+
+esphome:
+  name: $device_name
+
+logger:
+  level: DEBUG
+  logs:
+    sensor: INFO
+
+api:
+  encryption:
+    key: !secret api_password
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+
+  ap:
+    ssid: "LD2410S Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+web_server:
+  port: 80
+  version: 3
+  include_internal: true
+  auth:
+    username: !secret web_server_username
+    password: !secret web_server_password
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+uart:
+  id: uart_bus
+  tx_pin: ${uart_tx_pin}
+  rx_pin: ${uart_rx_pin}
+  baud_rate: 115200
+  parity: NONE
+  stop_bits: 1
+  # debug:
+  #  direction: BOTH
+  #  dummy_receiver: false
+  #  after:
+  #    delimiter: "\n"
+  #  sequence:
+  #    - lambda: UARTDebug::log_hex(direction, bytes, ':');
+
+deep_sleep:
+  wakeup_pin: GPIO15
+  wakeup_pin_mode: KEEP_AWAKE
+
+ld2410s:
+  uart_id: uart_bus
+
+binary_sensor:
+  - platform: ld2410s
+    has_target:
+      name: Presence
+    has_threshold_update:
+      name: Threshold update running
+
+sensor:
+  - platform: adc
+    pin: GPIO32
+    name: "VCC Voltage"
+    attenuation: 12db
+    filters:
+      - multiply: 2
+  - platform: ld2410s
+    target_distance:
+      name : Target Distance
+    threshold_update: 
+      name: Threshold update progress
+
+number:
+  - platform: ld2410s
+    max_distance:
+      name: Max detect distance
+    min_distance:
+      name: Min detect distance
+    no_delay:
+      name: No detect report delay
+    status_reporting_frequency:
+      name: Status reporting frequency
+    distance_reporting_frequency:
+      name: Distance reporting frequency
+
+button:
+  - platform: template
+    name: Enter sleep mode
+    entity_category: CONFIG
+    on_press:
+      - deep_sleep.enter: {}
+  - platform: ld2410s
+    enable_config:
+      name: Enable config mode
+    disable_config:
+      name: Disable config mode
+    apply_config:
+      name: Apply config changes
+    auto_threshold:
+      name: Start auto threshold update
+
+select:
+  - platform: ld2410s
+    response_speed:
+      name: Response speed
+
+text_sensor:
+  - platform: ld2410s
+    fw_version:
+      name: Firmware version

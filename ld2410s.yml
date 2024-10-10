@@ -79,12 +79,6 @@ binary_sensor:
       name: Threshold update running
 
 sensor:
-  - platform: adc
-    pin: GPIO32
-    name: "VCC Voltage"
-    attenuation: 12db
-    filters:
-      - multiply: 2
   - platform: ld2410s
     target_distance:
       name : Target Distance

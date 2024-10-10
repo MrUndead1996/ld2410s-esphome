@@ -103,7 +103,7 @@ namespace esphome
 
             if (result)
             {
-                ESP_LOGW(TAG, "Command %d failed", command_word);
+                ESP_LOGW(TAG, "Command %x failed", command_word);
                 return false;
             }
 
@@ -179,7 +179,7 @@ namespace esphome
             }
             break;
             default:
-                ESP_LOGD(TAG, "Unknown replay: %d", command_word);
+                ESP_LOGD(TAG, "Unknown replay: %x", command_word);
                 break;
             }
             this->buffer.clear();

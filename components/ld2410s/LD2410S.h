@@ -12,10 +12,8 @@
 #include "esphome/components/select/select.h"
 #endif
 
-namespace esphome
-{
-    namespace ld2410s
-    {
+namespace esphome {
+    namespace ld2410s {
         // Short reporting format
         static const uint16_t DATA_FRAME_HEADER = 0x6E;
         static const uint16_t DATA_FRAME_FOOTER = 0x62;
@@ -52,8 +50,7 @@ namespace esphome
         static const std::string RESPONSE_SPEED_NORMAL = "Normal";
         static const std::string RESPONSE_SPEED_FAST = "Fast";
 
-        struct Config
-        {
+        struct Config {
             uint32_t max_dist{ 0 };
             uint32_t min_dist{ 0 };
             uint32_t delay{ 0 };
@@ -62,25 +59,7 @@ namespace esphome
             uint32_t resp_speed{ 0 };
         };
 
-        struct DataFrame
-        {
-            uint16_t header{ DATA_FRAME_HEADER };
-            bool presence{ false };
-            uint16_t distance{ 0 };
-            uint16_t footer{ DATA_FRAME_FOOTER };
-        };
-
-        struct ThresholdFrame
-        {
-            uint32_t header{ THRESHOLD_HEADER };
-            uint16_t number{ 0 };
-            uint16_t type{ 0 };
-            uint16_t progress{ 0 };
-            uint32_t footer{ THRESHOLD_FOOTER };
-        };
-
-        struct CmdFrameT
-        {
+        struct CmdFrameT {
             uint32_t header{ 0 };
             uint16_t length{ 0 };
             uint16_t command{ 0 };
@@ -89,16 +68,21 @@ namespace esphome
             uint32_t footer{ 0 };
         };
 
-        enum class PackageType
-        {
+        struct CmdAckT {
+            uint16_t command{ 0 };
+            uint8_t data[36];
+            uint16_t length{ 0 };
+            bool result{ false };
+        };
+
+        enum class PackageType {
             ACK,
             SHORT_DATA,
             TRESHOLD,
             UNKNOWN
         };
 
-        class LD2410SListener
-        {
+        class LD2410SListener {
         public:
             virtual void on_presence(bool presence) {};
             virtual void on_distance(int distance) {};
@@ -107,9 +91,7 @@ namespace esphome
             virtual void on_fw_version(std::string& fw) {};
         };
 
-        class LD2410S : public uart::UARTDevice,
-            public Component
-        {
+        class LD2410S : public uart::UARTDevice, public Component {
         public:
             Config new_config;
 
@@ -138,11 +120,9 @@ namespace esphome
             void set_response_speed_select(select::Select* selector) { this->response_speed_select = selector; };
 #endif
         private:
-            std::vector<uint8_t> buffer;
             std::vector<LD2410SListener*> listeners{};
             Config current_config;
             bool cmd_active{ false };
-            bool config_mode_active{ false };
 #ifdef USE_NUMBER
             number::Number* max_distance_number{ nullptr };
             number::Number* min_distance_number{ nullptr };
@@ -159,25 +139,29 @@ namespace esphome
 #ifdef USE_SELECT
             select::Select* response_speed_select{ nullptr };
 #endif
-            void send_apply_config_cmd();
-            void send_start_auto_threshold_update_cmd();
-            void send_read_fw_cmd();
+            CmdFrameT prepare_read_config_cmd();
+            CmdFrameT prepare_apply_config_cmd();
+            CmdFrameT prepare_threshold_cmd();
+            CmdFrameT prepare_read_fw_cmd();
             void send_command(CmdFrameT cmd_frame);
-            PackageType read_line(uint32_t data);
+            PackageType read_line(uint8_t data, uint8_t* buffer, size_t pos);
             bool process_cmd_ack_package(uint8_t* buffer, int len);
-            void process_data_package(PackageType type);
-            int bytes_to_int(unsigned char* buffer, size_t size)
-            {
+            void process_data_package(PackageType type, uint8_t* buffer, size_t pos);
+            int read_int(uint8_t* buffer, size_t pos, size_t len) {
                 unsigned int ret = 0;
                 int shift = 0;
-                for (int i = 0; i < size; i++)
-                {
-                    ret |= static_cast<unsigned int>(buffer[i]) << shift;
+                for (size_t i = 0; i < len; i++) {
+                    ret |= static_cast<unsigned int>(buffer[pos + i]) << shift;
                     shift += 8;
                 }
                 return ret;
-            }
-            void read_current_config();
+            };
+            int two_byte_to_int(uint8_t firstbyte, uint8_t secondbyte) { return (secondbyte << 8) + firstbyte; };
+            CmdAckT parse_ack(uint8_t* buffer, size_t length);
+            void process_config_read_ack(uint8_t* data);
+            void process_read_fw_ack(uint8_t* data);
+            void process_short_data_package(uint8_t* data);
+            void process_threshold_package(uint8_t* data);
         };
     }
 }

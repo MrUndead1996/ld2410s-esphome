@@ -345,6 +345,9 @@ namespace esphome
             case PackageType::TRESHOLD:
                 this->process_threshold_package(&buffer[4]);
                 break;
+            default:
+                ESP_LOGD(TAG, "Unexpected package type");
+                break;
             }
         }
 
